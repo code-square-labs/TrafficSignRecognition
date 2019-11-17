@@ -50,4 +50,109 @@ def display_images_and_labels(images, labels):
         _ = plt.imshow(image)
         
 display_images_and_labels(images, labels)
-plt.savefig('ML_0708_signs.png', bbox_inches='tight')
+#plt.savefig('ML_0708_signs.png', bbox_inches='tight')
+
+
+
+# Model
+
+from keras.utils.np_utils import to_categorical
+from keras.models import Model
+from keras.layers import Dense, Dropout, Flatten, Input
+from keras.layers import Convolution2D, MaxPooling2D
+
+y = np.array(labels)
+X = np.array(images)
+
+num_categories = 6
+
+y = to_categorical(y, num_categories)
+
+inputs = Input(shape=(64, 64, 3))
+
+# one block of convolutional layers
+x = Convolution2D(64, 3, activation='relu', padding='same')(inputs)
+x = Convolution2D(64, 3, activation='relu', padding='same')(x)
+x = Convolution2D(64, 3, activation='relu', padding='same')(x)
+x = MaxPooling2D(pool_size=(2, 2))(x)
+
+# one more block
+x = Convolution2D(128, 3, activation='relu', padding='same')(x)
+x = Convolution2D(128, 3, activation='relu', padding='same')(x)
+x = MaxPooling2D(pool_size=(2, 2))(x)
+
+# one more block
+x = Convolution2D(256, 3, activation='relu', padding='same')(x)
+x = MaxPooling2D(pool_size=(2, 2))(x)
+
+x = Flatten()(x)
+x = Dense(256, activation='relu')(x)
+
+# softmax activation, 6 categories
+predictions = Dense(6, activation='softmax')(x)
+
+model = Model(input=inputs, output=predictions)
+model.summary()
+
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+
+
+# Training
+import time
+from sklearn.model_selection import train_test_split
+
+BATCH_SIZE = 32
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9, random_state=42, stratify=y)
+
+X_train.shape, y_train.shape
+
+model.fit(X_train, y_train, epochs=100, validation_split=0.3)
+
+# Evaluating
+
+train_loss, train_accuracy = model.evaluate(X_train, y_train, batch_size=BATCH_SIZE)
+print(train_loss)
+print(train_accuracy)
+
+test_loss, test_accuracy = model.evaluate(X_test, y_test, batch_size=BATCH_SIZE)
+print(test_loss)
+print(test_accuracy)
+
+model.save('conv-vgg.hdf5')
+
+
+
+# Testing Model
+import random
+
+# Pick 10 random images for test data set
+random.seed(3) # to make this deterministic
+sample_indexes = random.sample(range(len(X_test)), 10)
+sample_images = [X_test[i] for i in sample_indexes]
+sample_labels = [y_test[i] for i in sample_indexes]
+
+ground_truth = np.argmax(sample_labels, axis=1)
+
+X_sample = np.array(sample_images)
+prediction = model.predict(X_sample)
+predicted_categories = np.argmax(prediction, axis=1)
+print(predicted_categories)
+
+# Display the predictions and the ground truth visually.
+def display_prediction (images, true_labels, predicted_labels):
+    fig = plt.figure(figsize=(10, 10))
+    for i in range(len(true_labels)):
+        truth = true_labels[i]
+        prediction = predicted_labels[i]
+        plt.subplot(5, 2,1+i)
+        plt.axis('off')
+        color='green' if truth == prediction else 'red'
+        plt.text(80, 10, "Truth:        {0}\nPrediction: {1}".format(truth, prediction),
+                 fontsize=12, color=color)
+        plt.imshow(images[i])
+        
+display_prediction(sample_images, ground_truth, predicted_categories)
+
+plt.show()
