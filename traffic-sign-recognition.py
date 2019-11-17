@@ -110,7 +110,7 @@ X_train.shape, y_train.shape
 
 model.fit(X_train, y_train, epochs=100, validation_split=0.3)
 
-# Evaluating
+# Evaluation
 
 train_loss, train_accuracy = model.evaluate(X_train, y_train, batch_size=BATCH_SIZE)
 print(train_loss)
